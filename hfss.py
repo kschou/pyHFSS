@@ -83,7 +83,7 @@ class HfssPropertyObject(object):
     prop_server = None
 
 def make_str_prop(name, prop_tab=None, prop_server=None):
-    return make_prop(name, prop_tab=prop_tab, prop_server=prop_server)
+    return make_prop(name, prop_tab=prop_tab, prop_server=prop_server, prop_args=None)
 
 def make_int_prop(name, prop_tab=None, prop_server=None):
     return make_prop(name, prop_tab=prop_tab, prop_server=prop_server, prop_args=["MustBeInt:=", True])
@@ -92,7 +92,7 @@ def make_float_prop(name, prop_tab=None, prop_server=None):
     return make_prop(name, prop_tab=prop_tab, prop_server=prop_server, prop_args=["MustBeInt:=", False])
 
 def make_prop(name, prop_tab=None, prop_server=None, prop_args=None):
-    def set_prop(self, value, prop_tab=prop_tab, prop_server=prop_server):
+    def set_prop(self, value, prop_tab=prop_tab, prop_server=prop_server, prop_args=prop_args):
         prop_tab = self.prop_tab if prop_tab is None else prop_tab
         prop_server = self.prop_server if prop_server is None else prop_server
         if isinstance(prop_tab, types.FunctionType):
