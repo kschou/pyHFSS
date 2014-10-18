@@ -102,12 +102,13 @@ def make_prop(name, prop_tab=None, prop_server=None, prop_args=None):
             prop_server = prop_server(self)
         if prop_args is None:
             prop_args = []
-        self.prop_holder.ChangeProperty(
-            ["NAME:AllTabs",
-             ["NAME:"+prop_tab,
-              ["NAME:PropServers", prop_server],
-              ["NAME:ChangedProps",
-               ["NAME:"+name, "Value:=", value] + prop_args]]])
+        if value != get_prop(self, prop_tab=prop_tab, prop_server=prop_server):
+            self.prop_holder.ChangeProperty(
+                ["NAME:AllTabs",
+                 ["NAME:"+prop_tab,
+                  ["NAME:PropServers", prop_server],
+                  ["NAME:ChangedProps",
+                   ["NAME:"+name, "Value:=", value] + prop_args]]])
 
     def get_prop(self, prop_tab=prop_tab, prop_server=prop_server):
         prop_tab = self.prop_tab if prop_tab is None else prop_tab
@@ -218,6 +219,12 @@ class HfssProject(object):
     def get_designs(self):
         return [HfssDesign(self, d) for d in self._project.GetDesigns()]
 
+    def get_design_names(self):
+        return [d.name for d in self.get_designs()]
+        
+    def get_path(self):
+        return self._project.GetPath()
+
     def save(self, path=None):
         if path is None:
             self._project.Save()
@@ -236,9 +243,9 @@ class HfssProject(object):
         else:
             raise ValueError('%s design does not exist' % design.name)
 
-    def duplicate_design(self, target, source):
+    def duplicate_design(self, source, target_name=None):
         src_design = self.get_design(source)
-        return src_design.duplicate(name=target)
+        return src_design.duplicate(name=target_name)
 
     def get_variable_names(self):
         return [VariableString(s) for s in self._project.GetVariables()]
@@ -323,6 +330,7 @@ class HfssDesign(object):
     def rename_design(self, name):
         old_name = self._design.GetName()
         self._design.RenameDesignInstance(old_name, name)
+        self.name = self._design.GetName()
 		
     def copy_to_project(self, project):
         project.make_active()
@@ -517,29 +525,6 @@ class HfssSetup(HfssPropertyObject):
     
     def delete_sweep(self, name):
         self._setup_module.DeleteSweep(self.name, name)
-
-    def add_fields_convergence_expr(self, expr, pct_delta, phase=0):
-        """note: because of hfss idiocy, you must call "commit_convergence_exprs" after adding all exprs"""
-        assert isinstance(expr, NamedCalcObject)
-        self.expression_cache_items.append(
-            ["NAME:CacheItem",
-             "Title:=", expr.name+"_conv",
-             "Expression:=", expr.name,
-             "Intrinsics:=", "Phase='{}deg'".format(phase),
-             "IsConvergence:=", True,
-             "UseRelativeConvergence:=", 1,
-             "MaxConvergenceDelta:=", pct_delta,
-             "MaxConvergeValue:=", "0.05",
-             "ReportType:=", "Fields",
-             ["NAME:ExpressionContext"]])
-
-    def commit_convergence_exprs(self):
-        """note: this will eliminate any convergence expressions not added through this interface"""
-        args = [
-            "NAME:"+self.name,
-            ["NAME:ExpressionCache", self.expression_cache_items]
-        ]
-        self._setup_module.EditSetup(self.name, args)
 
     def get_sweep_names(self):
         return self._setup_module.GetSweeps(self.name)
@@ -738,10 +723,9 @@ class HfssFrequencySweep(object):
             ["X Component:=", "Freq", "Y Component:=", [expr]], [])
         return HfssReport(self.parent.parent, name)
 
-    def get_report_arrays(self, expr):
-        r = self.create_report("Temp", expr)
+    def get_report_arrays(self, expr, name="Temp"):
+        r = self.create_report(name, expr)
         return r.get_arrays()
-
 
 class HfssReport(object):
     def __init__(self, design, name):
